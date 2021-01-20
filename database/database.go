@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"statusok/notify"
@@ -34,6 +35,7 @@ type RequestInfo struct {
 	ResponseCode         int
 	ResponseTime         int64
 	ExpectedResponseTime int64
+	CertNotAfter        time.Time
 }
 
 type ErrorInfo struct {
@@ -44,6 +46,7 @@ type ErrorInfo struct {
 	ResponseBody string
 	Reason       error
 	OtherInfo    string
+	CertNotAfter time.Time
 }
 
 type Database interface {
@@ -275,6 +278,7 @@ func logErrorInfo(errorInfo ErrorInfo) {
 			"responseBody": errorInfo.ResponseBody,
 			"reason":       errorInfo.Reason.Error(),
 			"otherInfo":    errorInfo.Reason,
+			"CertNotAfter": errorInfo.CertNotAfter.String(),
 		}).Error("Status Ok Error occurred for url " + errorInfo.Url)
 	}
 
@@ -290,6 +294,7 @@ func logRequestInfo(requestInfo RequestInfo) {
 			"responseCode":         requestInfo.ResponseCode,
 			"responseTime":         requestInfo.ResponseTime,
 			"expectedResponseTime": requestInfo.ExpectedResponseTime,
+			"CertNotAfter":         requestInfo.CertNotAfter.String(),
 		}).Info("")
 	}
 }

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"statusok/database"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"statusok/database"
 	"strconv"
 	"time"
 )
@@ -254,11 +254,18 @@ func PerformRequest(requestConfig RequestConfig, throttle chan int) error {
 			Timeout: timeout,
 		}
 	*/
-
-	client := &http.Client{}
+	timeout := time.Duration(requestConfig.ResponseTime) * time.Millisecond
+	client := &http.Client{
+		Timeout: timeout,
+	}
 	start := time.Now()
 
 	getResponse, respErr := client.Do(request)
+
+	certNotAfter := time.Time{}
+	if len(getResponse.TLS.PeerCertificates) > 0 {
+		certNotAfter = getResponse.TLS.PeerCertificates[0].NotAfter
+	}
 
 	if respErr != nil {
 		//Request failed . Add error info to database
@@ -276,6 +283,7 @@ func PerformRequest(requestConfig RequestConfig, throttle chan int) error {
 			ResponseBody: convertResponseToString(getResponse),
 			Reason:       database.ErrDoRequest,
 			OtherInfo:    respErr.Error(),
+			CertNotAfter: certNotAfter,
 		})
 		return respErr
 	}
@@ -292,6 +300,7 @@ func PerformRequest(requestConfig RequestConfig, throttle chan int) error {
 			ResponseBody: convertResponseToString(getResponse),
 			Reason:       errResposeCode(getResponse.StatusCode, requestConfig.ResponseCode),
 			OtherInfo:    "",
+			CertNotAfter: certNotAfter,
 		})
 		return errResposeCode(getResponse.StatusCode, requestConfig.ResponseCode)
 	}
@@ -306,6 +315,7 @@ func PerformRequest(requestConfig RequestConfig, throttle chan int) error {
 		ResponseCode:         getResponse.StatusCode,
 		ResponseTime:         elapsed.Nanoseconds() / 1000000,
 		ExpectedResponseTime: requestConfig.ResponseTime,
+		CertNotAfter:         certNotAfter,
 	})
 
 	return nil
